@@ -1,0 +1,40 @@
+EECS 351 — AprilTag Deblurring Evaluation
+=======================================
+
+Purpose
+-------
+Compare blurred versus deblurred images against the SAME sharp, aligned
+reference. Report PSNR (dB), SSIM (0.1), detected tag orientation error
+(degrees), and detection rate. Synthetic test-set ground-truth angles are
+provided explicitly by your image-generation code.
+
+Setup
+-----
+python -m pip install numpy scikit-image opencv-contrib-python
+
+Create a CSV such as samples.csv (paths relative to CSV file):
+
+reference,blurred,restored,angle_deg,tag_id
+images/sharp_30.png,images/blurred_30.png,images/deblurred_30.png,30,0
+images/sharp_75.png,images/blurred_75.png,images/deblurred_75.png,75,0
+
+Then run:
+python apriltag_evaluation.py --manifest samples.csv --output results.csv
+
+IMPORTANT
+---------
+- Images must have the same size and exact spatial alignment. Merely resizing
+  different crops is not enough. Otherwise PSNR and SSIM are misleading.
+- Angle_deg means the directed angle of the tag's top edge in image/screen
+  coordinates (clockwise positive), NOT camera yaw/pitch/roll in 3D.
+- AprilTag IDs and corner ordering come from OpenCV's AprilTag dictionaries.
+  If your team uses a different tag family, use --family 25h9 / 16h5 / 36h10.
+- If a tag cannot be detected, angle error is NaN. This is NOT zero error.
+  Compare detection rates alongside conditional mean angle errors.
+- For images with multiple tags, fill in tag_id in the CSV.
+- The reference image is used only as image-quality ground truth, not to
+  estimate the provided angle. If the synthetic generator's angle convention
+  differs, convert your known angle to the convention above first.
+- A deblurred image can have improved SSIM yet worse angle error; record both.
+- A true 3D pose evaluation requires camera calibration, tag physical size,
+  and pose estimation (not the simple top-edge image angle measured here).
