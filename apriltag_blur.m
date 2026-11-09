@@ -1,14 +1,17 @@
 function generate_apriltag_blur
 
-%% Change these values to make a different set
-outputFolderName = '45_deg_roll_flat';
-exposureMs = 20;
-samplesPerExposure = 81;
-linearTravelPx = [8 16 32];
-rotationSweepDeg = [6 9 12 18 24];
-midpointRollDeg = 45;
-midpointTiltDeg = 0;
 
+outputFolderName = 'generated_matlab'; 
+exposureMs = 20;
+samplesPerExposure = 81; %% # of snapshots simulated
+linearTravelPx = [8 16 32]; %% total linear movement 
+rotationSweepDeg = [6 12 24]; %% total rotational angle swept 
+
+%%Inital roll and tilt angles of april tag (reference photo)
+midpointRollDeg = 15;
+midpointTiltDeg = 25;
+
+%% validates all input combinations
 validateattributes(exposureMs, {'numeric'}, {'scalar','real','finite','>=',0.001});
 validateattributes(samplesPerExposure, {'numeric'}, {'scalar','integer','>=',2});
 validateattributes(linearTravelPx, {'numeric'}, {'vector','nonempty','integer','>=',1,'<=',250});
@@ -16,9 +19,11 @@ validateattributes(rotationSweepDeg, {'numeric'}, {'vector','nonempty','integer'
 validateattributes(midpointRollDeg, {'numeric'}, {'scalar','real','finite'});
 validateattributes(midpointTiltDeg, {'numeric'}, {'scalar','real','>=',-40,'<=',40});
 
-%% Load the tag and define the ideal camera
-sourceUrl = ['https://raw.githubusercontent.com/AprilRobotics/apriltag-imgs/master/tag36h11/tag36_11_00000.png'];
-% tag36_11_00000.png
+%Original github where april tag was taken.
+sourceUrl = ['https://raw.githubusercontent.com/AprilRobotics/apriltag-imgs/' ...
+    'master/tag36h11/tag36_11_00000.png'];
+
+%Rereating April Tag in binary matrix
 tagCells = [
     1 1 1 1 1 1 1 1 1 1
     1 0 0 0 0 0 0 0 0 1
@@ -31,6 +36,8 @@ tagCells = [
     1 0 0 0 0 0 0 0 0 1
     1 1 1 1 1 1 1 1 1 1
 ];
+
+%%sizing
 pixelsPerCell = 32;
 tagTexture = repelem(255 * tagCells, pixelsPerCell, pixelsPerCell);
 tagSideM = 0.12;  % Side length across the black square
@@ -41,24 +48,45 @@ texturePixelsPerMeter = 8 * pixelsPerCell / tagSideM;
 width = 640;
 height = 480;
 focalLengthPx = 600;
+
+%% initializes virtual camera's focal length, and center of image
 K = [focalLengthPx 0 (width-1)/2; 0 focalLengthPx (height-1)/2; 0 0 1];
+
+%%reads vertical and horizontal coordinates and creates 2D matrx 
 [u, v] = meshgrid(0:width-1, 0:height-1);
+
+
+%finds viewing direction through each pixel 
 cameraRays = K \ [u(:).'; v(:).'; ones(1, numel(u))];
+
+%tilts and rotates tag
 midpointRotation = rotationZ(midpointRollDeg) * rotationY(midpointTiltDeg);
+
+%takes physical inputs declared earlier to and creates function to render
+
 render = @(R) renderTag(tagTexture, texturePixelsPerMeter, R, ...
     tagCenterM, cameraRays, [height width]);
-front = render(eye(3));
-sharp = render(midpointRotation);
 
-%% Render and average the exposure samples
+
+front = render(eye(3)); %renders straight image
+sharp = render(midpointRotation); %renders image with tilt 
+
+
+
+
+%%set up output folder
 scriptFolder = fileparts(mfilename('fullpath'));
 outputFolder = fullfile(scriptFolder, outputFolderName);
 requireNewFolder(outputFolder);
+
+%writes to a temporary folder until all images load
 stagingFolder = tempname(scriptFolder);
 [madeFolder, message] = mkdir(stagingFolder);
 assert(madeFolder, '%s', message);
-stagingCleanup = onCleanup(@() removeStagingFolder(stagingFolder)); %#ok<NASGU>
+stagingCleanup = onCleanup(@() removeStagingFolder(stagingFolder)); 
 
+
+%saves straight on view 
 referenceName = 'sharp_midpoint.png';
 static = struct('type', 'static');
 saveImage = @(name, image, R, motion, reference) saveFrame( ...
@@ -66,7 +94,7 @@ saveImage = @(name, image, R, motion, reference) saveFrame( ...
 records = saveImage('sharp_front.png', front, eye(3), static, 'sharp_front.png');
 records(end+1) = saveImage(referenceName, sharp, midpointRotation, static, referenceName);
 
-% A phase of zero is the midpoint of the exposure.
+
 phases = ((1:samplesPerExposure) - 0.5) / samplesPerExposure - 0.5;
 exposureSeconds = exposureMs / 1000;
 linearTravelPx = unique(linearTravelPx(:)).';
@@ -98,7 +126,7 @@ for axisIndex = 1:numel(axisNames)
     end
 end
 
-%% Record ground truth and publish the complete output folder
+
 truth.tag = struct('family', 'tag36h11', 'id', 0, ...
     'black_square_side_m', tagSideM, 'source_png', sourceUrl);
 truth.camera = struct('width_px', width, 'height_px', height, 'K', K, ...
@@ -161,7 +189,7 @@ end
 function writeGroundTruth(path, truth)
 file = fopen(path, 'wt');
 assert(file ~= -1, 'Could not open %s for writing.', path);
-fileCleanup = onCleanup(@() fclose(file)); %#ok<NASGU>
+fileCleanup = onCleanup(@() fclose(file)); 
 text = jsonencode(truth);
 written = fprintf(file, '%s\n', text);
 assert(written == numel(text) + 1, 'Could not finish writing %s.', path);
