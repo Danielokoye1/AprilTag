@@ -1,13 +1,13 @@
 function generate_apriltag_blur
 
 %% Change these values to make a different set
-outputFolderName = 'generated_matlab';
+outputFolderName = '45_deg_roll_flat';
 exposureMs = 20;
 samplesPerExposure = 81;
 linearTravelPx = [8 16 32];
-rotationSweepDeg = [6 12 24];
-midpointRollDeg = 15;
-midpointTiltDeg = 25;
+rotationSweepDeg = [6 9 12 18 24];
+midpointRollDeg = 45;
+midpointTiltDeg = 0;
 
 validateattributes(exposureMs, {'numeric'}, {'scalar','real','finite','>=',0.001});
 validateattributes(samplesPerExposure, {'numeric'}, {'scalar','integer','>=',2});
@@ -17,8 +17,7 @@ validateattributes(midpointRollDeg, {'numeric'}, {'scalar','real','finite'});
 validateattributes(midpointTiltDeg, {'numeric'}, {'scalar','real','>=',-40,'<=',40});
 
 %% Load the tag and define the ideal camera
-sourceUrl = ['https://raw.githubusercontent.com/AprilRobotics/apriltag-imgs/' ...
-    'master/tag36h11/tag36_11_00000.png'];
+sourceUrl = ['https://raw.githubusercontent.com/AprilRobotics/apriltag-imgs/master/tag36h11/tag36_11_00000.png'];
 % tag36_11_00000.png
 tagCells = [
     1 1 1 1 1 1 1 1 1 1
