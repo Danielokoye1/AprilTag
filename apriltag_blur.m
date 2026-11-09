@@ -19,7 +19,7 @@ validateattributes(midpointTiltDeg, {'numeric'}, {'scalar','real','>=',-40,'<=',
 %% Load the tag and define the ideal camera
 sourceUrl = ['https://raw.githubusercontent.com/AprilRobotics/apriltag-imgs/' ...
     'master/tag36h11/tag36_11_00000.png'];
-% These 10x10 cells match tag36_11_00000.png, including its white margin.
+% tag36_11_00000.png
 tagCells = [
     1 1 1 1 1 1 1 1 1 1
     1 0 0 0 0 0 0 0 0 1
