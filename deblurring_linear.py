@@ -37,7 +37,7 @@ elif blur_type == 'vertical':
 elif blur_type == 'diagonal':
     kernel = np.eye(blurred_pixels, dtype =np.float32) / blurred_pixels
 
-# Wiener Deconvolition
+# Wiener Deconvolution
 H = np.fft.fft2(kernel, s=img_n.shape)      # Zero padding the kernel so its teh same size of the img
 G = np.fft.fft2(img_n)                      # image spectrum, column by column
 F = np.conj(H) / (np.abs(H)**2 + K) * G
