@@ -50,41 +50,42 @@ def detect_apriltag_angle(detector, img):
 
     return float(angle)
 
-# Stand-in for velocity estimate/ground truth
-vel_est = 0
-vel_tr = 0
-
-# Select Folder
-folder = '45_deg_roll_flat/'
-angle = 45
-
-# Reference Image as greyscale
-ref = imread(folder + 'sharp_midpoint.png', as_gray=True)
-
-# Comparison Image (Replace with Deblurred Image as needed)
-comp_image = 'linear_008px.png'
-img = imread(folder + comp_image, as_gray=True)
-
-# Compare images PSNR and SSIM
-psnr,ssim = eval_image(ref,img)
-
-# Detect AprilTag and estimate rotation angle
-detector = Detector(families='tag36h11')
-
-angle_est = detect_apriltag_angle(detector, img)
-
-print('PSNR:',psnr)
-print('SSIM:',ssim)
-
-# Print angle error
-if (angle_est == None):
-    print('AprilTag not detected')
-else:
-    print('Angle Error:', angle_error(angle_est, angle))
-    if angle != 0:
-        print('Angle Percent Error:', angle_error(angle_est, angle)/angle*100)
-
-# Print vel error
-print('Vel Error:', abs(vel_est - vel_tr))
-if vel_tr != 0:
-    print('Vel Percent Error:', abs(vel_est - vel_tr)/vel_tr*100)
+if __name__ == "__main__":
+    # Stand-in for velocity estimate/ground truth
+    vel_est = 0
+    vel_tr = 0
+    
+    # Select Folder
+    folder = '45_deg_roll_flat/'
+    angle = 45
+    
+    # Reference Image as greyscale
+    ref = imread(folder + 'sharp_midpoint.png', as_gray=True)
+    
+    # Comparison Image (Replace with Deblurred Image as needed)
+    comp_image = 'linear_008px.png'
+    img = imread(folder + comp_image, as_gray=True)
+    
+    # Compare images PSNR and SSIM
+    psnr,ssim = eval_image(ref,img)
+    
+    # Detect AprilTag and estimate rotation angle
+    detector = Detector(families='tag36h11')
+    
+    angle_est = detect_apriltag_angle(detector, img)
+    
+    print('PSNR:',psnr)
+    print('SSIM:',ssim)
+    
+    # Print angle error
+    if (angle_est == None):
+        print('AprilTag not detected')
+    else:
+        print('Angle Error:', angle_error(angle_est, angle))
+        if angle != 0:
+            print('Angle Percent Error:', angle_error(angle_est, angle)/angle*100)
+    
+    # Print vel error
+    print('Vel Error:', abs(vel_est - vel_tr))
+    if vel_tr != 0:
+        print('Vel Percent Error:', abs(vel_est - vel_tr)/vel_tr*100)
