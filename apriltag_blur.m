@@ -4,8 +4,8 @@ function generate_apriltag_blur
 outputFolderName = 'generated_matlab'; 
 exposureMs = 20;
 samplesPerExposure = 81; %% # of snapshots simulated
-linearTravelPx = [8 16 32]; %% total linear movement 
-rotationSweepDeg = [6 12 24]; %% total rotational angle swept 
+linearTravelPx = 0:24; %% total linear movement 
+rotationSweepDeg = 0:24; %% total rotational angle swept 
 
 %%Inital roll and tilt angles of april tag (reference photo)
 midpointRollDeg = 15;
