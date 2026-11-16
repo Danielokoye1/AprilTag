@@ -4,7 +4,7 @@ import csv
 import matplotlib.pyplot as plt
 
 from skimage.io import imread
-from scipy.signal import wiener
+from skimage.restoration import wiener
 from pupil_apriltags import Detector
 from file_eval import eval_image, angle_error, detect_apriltag_angle
 
@@ -36,16 +36,53 @@ def wiener_deblur_image(img_n, sweep_deg, sigma, K):
     pol_h, pol_w = img_pn.shape[:2]  # Shape of polar coords image
 
     # Define Kernel for Wiener Deconvolution
-    kernel = np.zeros(pol_h, dtype=np.float32)
     blurred_rows = int(pol_h * (sweep_deg / 360.0))
-    kernel[:blurred_rows] = 1.0 / blurred_rows
-    kernel = np.roll(kernel, -(blurred_rows // 2))
 
-    # Deconvolve
-    H = np.fft.fft(kernel)[:, None]                     # kernel spectrum, one column
-    G = np.fft.fft(img_pn, axis=0)                      # image spectrum, column by column
-    F = np.conj(H) / (np.abs(H) ** 2 + K) * G
-    restored_polar = np.real(np.fft.ifft(F, axis=0)).astype(np.float32)
+    psf = np.ones((blurred_rows, 1)) / blurred_rows      # point spread func
+    reg = np.zeros((3, 3)); reg[1, 1] = 1                # regularizer
+    restored_polar = wiener(img_pn / 255.0, psf, balance=K, reg=reg, clip=False) * 255.0
+
+    restored = cv2.warpPolar(restored_polar, (width, height), center, max_radius, flags=flgs + cv2.WARP_INVERSE_MAP)
+    restored = np.nan_to_num(restored, nan=255.0)          # NaN -> white (background)
+    restored = np.clip(restored, 0, 255).astype(np.uint8)
+
+    # Cropping the image so that the dark circle outside is eliminated
+    c0, r0 = int(center[0]), int(center[1])
+    half = int(max_radius / np.sqrt(2))            # largest square that fits inside the circle
+    crop = (slice(r0 - half, r0 + half), slice(c0 - half, c0 + half))
+
+    
+    restored = np.nan_to_num(restored, nan=255.0)          # NaN -> white (background)
+    restored = np.clip(restored, 0, 255).astype(np.uint8)
+
+    psnr_b, ssim_b = eval_image(ref[crop], img_n[crop])
+    psnr_r, ssim_r = eval_image(ref[crop], restored.astype(np.float32)[crop])
+
+    return restored, img_n, psnr_b, ssim_b, psnr_r, ssim_r
+
+def rl_deblur_image(img_n, sweep_deg, sigma, K):
+    # Convert to Polar Coordinates
+    height, width = img_n.shape[:2]
+    center = (width / 2, height / 2)
+    max_radius = height / 2
+    flgs = cv2.INTER_LINEAR + cv2.WARP_POLAR_LINEAR
+
+    # Adding noise to the image to simulate camera
+    rng = np.random.default_rng(0)
+    img_n = np.clip(img_n + rng.normal(0, sigma, img_n.shape), 0, 255).astype(np.float32) # Adding noise to the image
+
+    img_pn = cv2.warpPolar(img_n, dsize=None, center=center, maxRadius=max_radius, flags=flgs)
+
+    img_pn = cv2.warpPolar(img_n, dsize=None, center=center, maxRadius=max_radius, flags=flgs)
+
+    pol_h, pol_w = img_pn.shape[:2]  # Shape of polar coords image
+
+    # Define Kernel for RL Deconvolution
+    blurred_rows = int(pol_h * (sweep_deg / 360.0))
+
+    psf = np.ones((blurred_rows, 1)) / blurred_rows      # point spread func
+    reg = np.zeros((3, 3)); reg[1, 1] = 1                # regularizer
+    restored_polar = wiener(img_pn / 255.0, psf, balance=K, reg=reg, clip=False) * 255.0
 
     restored = cv2.warpPolar(restored_polar, (width, height), center, max_radius, flags=flgs + cv2.WARP_INVERSE_MAP)
     restored = np.nan_to_num(restored, nan=255.0)          # NaN -> white (background)
@@ -86,3 +123,12 @@ with open('results_45deg_24roll.csv', 'w', newline='') as f:
         ang_err_r = angle_error(ang_est_r, angle) if ang_est_r is not None else None
         
         writer.writerow([s, psnr_b, ssim_b, psnr_r, ssim_r, ang_err_r, ang_err])
+
+restored, img_n, psnr_b, ssim_b, psnr_r, ssim_r = wiener_deblur_image(img, sweep_deg, 0, K)
+cv2.imwrite(folder + 'restored_wiener.png', restored)
+
+restored, img_n, psnr_b, ssim_b, psnr_r, ssim_r = wiener_deblur_image(img, sweep_deg, 5, K)
+cv2.imwrite(folder + 'restored_wiener_5n.png', restored)
+
+restored, img_n, psnr_b, ssim_b, psnr_r, ssim_r = wiener_deblur_image(img, sweep_deg, 10, K)
+cv2.imwrite(folder + 'restored_wiener_10n.png', restored)
