@@ -1,5 +1,4 @@
 import numpy as np
-import cv2
 from skimage.io import imread
 from scipy.signal import wiener
 from skimage.restoration import richardson_lucy
