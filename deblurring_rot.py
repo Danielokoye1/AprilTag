@@ -13,7 +13,7 @@ folder = '45_deg_roll_flat/'
 comp_image = 'roll_024deg.png'
 ref = imread(folder + 'sharp_midpoint.png', as_gray=True)
 sweep_deg = 24
-sigma = [0, 1, 2, 3, 5, 10, 15, 20]         # Noise stddev
+sigma = list(range(0, 28, 2))                 # Noise stddev
 K = 0.005                                   # Wiener SNR
 angle = 45                                  # Ground truth angle for comparison
 
@@ -48,6 +48,7 @@ def wiener_deblur_image(img_n, sweep_deg, sigma, K):
     restored_polar = np.real(np.fft.ifft(F, axis=0)).astype(np.float32)
 
     restored = cv2.warpPolar(restored_polar, (width, height), center, max_radius, flags=flgs + cv2.WARP_INVERSE_MAP)
+    restored = np.nan_to_num(restored, nan=255.0)          # NaN -> white (background)
     restored = np.clip(restored, 0, 255).astype(np.uint8)
 
     # Cropping the image so that the dark circle outside is eliminated
@@ -55,10 +56,14 @@ def wiener_deblur_image(img_n, sweep_deg, sigma, K):
     half = int(max_radius / np.sqrt(2))            # largest square that fits inside the circle
     crop = (slice(r0 - half, r0 + half), slice(c0 - half, c0 + half))
 
+    
+    restored = np.nan_to_num(restored, nan=255.0)          # NaN -> white (background)
+    restored = np.clip(restored, 0, 255).astype(np.uint8)
+
     psnr_b, ssim_b = eval_image(ref[crop], img_n[crop])
     psnr_r, ssim_r = eval_image(ref[crop], restored.astype(np.float32)[crop])
 
-    return restored, psnr_b, ssim_b, psnr_r, ssim_r
+    return restored, img_n, psnr_b, ssim_b, psnr_r, ssim_r
 
 img = imread(folder + comp_image, as_gray=True).astype(np.float32)
 
@@ -70,14 +75,14 @@ if img.max() <= 1:
 
 with open('results_45deg_24roll.csv', 'w', newline='') as f:
     writer = csv.writer(f)
-    writer.writerow(['Noise Sigma', 'PSNR Blurred', 'SSIM Blurred', 'PSNR Restored', 'SSIM Restored', 'Angle Error'])
+    writer.writerow(['Noise Sigma', 'PSNR Blurred', 'SSIM Blurred', 'PSNR Restored', 'SSIM Restored', 'Angle Error Blurred', 'Angle Error Restored'])
     for s in sigma:
-        restored, psnr_b, ssim_b, psnr_r, ssim_r = wiener_deblur_image(img, sweep_deg, s, K)
-        ang_est = detect_apriltag_angle(detector, restored.astype(np.uint8))
+        restored, img_n, psnr_b, ssim_b, psnr_r, ssim_r = wiener_deblur_image(img, sweep_deg, s, K)
 
-        if (ang_est == None):
-            ang_err = None
-        else:
-            ang_err = angle_error(ang_est, angle)
+        ang_est = detect_apriltag_angle(detector, restored.astype(np.uint8))
+        ang_err = angle_error(ang_est, angle) if ang_est is not None else None
+
+        ang_est_r = detect_apriltag_angle(detector, img_n.astype(np.uint8))
+        ang_err_r = angle_error(ang_est_r, angle) if ang_est_r is not None else None
         
-        writer.writerow([s, psnr_b, ssim_b, psnr_r, ssim_r, ang_err])
+        writer.writerow([s, psnr_b, ssim_b, psnr_r, ssim_r, ang_err_r, ang_err])
