@@ -17,7 +17,7 @@ tag = [
     1 1 1 1 1 1 1 1 1 1 1 1 
     1 1 1 1 1 1 1 1 1 1 1 1 ];
 
-lengthOfMotions = [8 16 32];
+lengthOfMotions = [0 16 32];
 rotateAngles = [6 12 24]; 
 
 
